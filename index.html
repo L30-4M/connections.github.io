@@ -497,31 +497,17 @@
     <header>
         <div class="header-inner">
             <a href="#" class="logo">Research</a>
-            <nav class="nav-links">
-                <a href="#">Papers</a>
-                <a href="#">Blog</a>
-                <a href="#">About</a>
-            </nav>
+
         </div>
     </header>
 
     <div class="hero">
-        <div class="meta">
-            Research · <time>January 2026</time>
-        </div>
+
         <h1>Solving NYT Connections with Word Embeddings: A Probabilistic Approach</h1>
         <p class="subtitle">
-            We explore how pre-trained word embeddings can be reinterpreted through the lens of latent topic modeling to solve semantic grouping puzzles—without any task-specific training data.
+            This work explores how pre-trained word embeddings can be reinterpreted through the lens of latent topic modeling to solve semantic grouping puzzles—without any task-specific training data.
         </p>
-        <div class="authors">
-            <div class="author">
-                <div class="author-avatar">R</div>
-                <div>
-                    <div class="author-name">Research Author</div>
-                    <div class="author-role">Independent Researcher</div>
-                </div>
-            </div>
-        </div>
+
     </div>
 
     <article>
@@ -549,17 +535,17 @@
         </div>
 
         <p>
-            At first glance, this seems like a problem tailor-made for large language models—and indeed, modern LLMs can solve many Connections puzzles through in-context reasoning. But we were curious: could we build a solver using only pre-trained word embeddings and a principled probabilistic framework? The answer, it turns out, is yes—and the approach reveals something interesting about the latent structure hidden in word vectors.
+            At first glance, this seems like a problem tailor-made for large language models—and indeed, modern LLMs can solve many Connections puzzles through in-context reasoning. But could a solver be built using only pre-trained word embeddings and a principled probabilistic framework? The answer, it turns out, is yes—and the approach reveals something interesting about the latent structure hidden in word vectors.
         </p>
 
         <h2>Defining the Problem Probabilistically</h2>
 
         <p>
-            When presented with two potential groups—say, Group A: <em>arrival, flight, gate, destination</em> versus Group B: <em>arrival, almanac, tan, team</em>—you can intuitively tell that one is more likely to be an actual Connections category. This intuition suggests that we can assign a probability to each potential grouping, and by extension, to each potential solution (a partition of all 16 words into four groups).
+            When presented with two potential groups—say, Group A: <em>arrival, flight, gate, destination</em> versus Group B: <em>arrival, almanac, tan, team</em>—you can intuitively tell that one is more likely to be an actual Connections category. This intuition suggests that a probability can be assigned to each potential grouping, and by extension, to each potential solution (a partition of all 16 words into four groups).
         </p>
 
         <p>
-            We formalize this as:
+            This can be formalized as:
         </p>
 
         <div class="math-block">
@@ -567,7 +553,7 @@
         </div>
 
         <p>
-            where $S$ is a solution consisting of four groups. We make two key assumptions: first, that the most likely solution under our model corresponds to the true solution; and second, that we can factor the joint probability using a mean-field approximation:
+            where $S$ is a solution consisting of four groups. Two key assumptions are made: first, that the most likely solution under this model corresponds to the true solution; and second, that the joint probability can be factored using a mean-field approximation:
         </p>
 
         <div class="math-block">
@@ -594,11 +580,11 @@
         </div>
 
         <p>
-            Now, when picking a topic, we can agree that some topics are more likely than others. A category like "sports" is far more probable in a mainstream puzzle than "quantum topology." This suggests topics are drawn from some distribution—call it $P(t|\text{NYT})$. Similarly, if I asked you to say the first word that comes to mind when I say "sports," we'd both agree "ball" is far more likely than "poetry." This tells us there exists a distribution $P(w|t)$ that captures our abstract notion of word-topic relatedness.
+            Now, when picking a topic, some topics are clearly more likely than others. A category like "sports" is far more probable in a mainstream puzzle than "quantum topology." This suggests topics are drawn from some distribution—call it $P(t|\text{NYT})$. Similarly, if I asked you to say the first word that comes to mind when I say "sports," "ball" is far more likely than "poetry." This tells us there exists a distribution $P(w|t)$ that captures our abstract notion of word-topic relatedness.
         </p>
 
         <p>
-            Taking this reasoning, we can express the unnormalized posterior for a group given a topic:
+            Taking this reasoning, the unnormalized posterior for a group given a topic can be expressed as:
         </p>
 
         <div class="math-block">
@@ -624,15 +610,15 @@
         <h2>From Theory to Word Vectors</h2>
 
         <p>
-            Throughout this framework, we've left out one crucial detail: how do we actually find $P(w|t)$ and $P(t)$?
+            Throughout this framework, one crucial detail has been left out: how to actually find $P(w|t)$ and $P(t)$?
         </p>
 
         <p>
-            The simplest solution would be to have puzzle creators directly rank word-topic similarities—clean data, but entirely unfeasible. We could analyze historical NYT Connections puzzles, but this dataset is small and uninformative since solutions aren't repeated. Crowdsourcing similarity judgments is promising but outside the scope of this project. Existing similarity datasets aren't sufficient for our purposes either.
+            The simplest solution would be to have puzzle creators directly rank word-topic similarities—clean data, but entirely unfeasible. Historical NYT Connections puzzles could be analyzed, but this dataset is small and uninformative since solutions aren't repeated. Crowdsourcing similarity judgments is promising but outside the scope of this project. Existing similarity datasets aren't sufficient for these purposes either.
         </p>
 
         <p>
-            Our final hope is to use text data, like Wikipedia, to approximate $P(w|t)$ and $P(t)$. In order to do this we make the following simplifying assumptions:
+            The remaining approach is to use text data, like Wikipedia, to approximate $P(w|t)$ and $P(t)$. In order to do this, the following simplifying assumptions are made:
         </p>
 
         <ul>
@@ -643,12 +629,12 @@
 
         <div class="callout">
             <p>
-                <strong>Key insight:</strong> The idea behind using text data to approximate $P(w|t)$ isn't entirely far-fetched. For example, if you want a passage to convey <em>sadness</em>, you're more likely to use words like "blue," "rain," and "tears." And any word vectors we find from factorizing the co-occurrence matrix will be equivalent up to a rotation to $W_i = \sum_{\text{topics}} P(w|t)\sqrt{P(t)} \cdot \hat{t}$.
+                <strong>Key insight:</strong> The idea behind using text data to approximate $P(w|t)$ isn't entirely far-fetched. For example, if you want a passage to convey <em>sadness</em>, you're more likely to use words like "blue," "rain," and "tears." And any word vectors found from factorizing the co-occurrence matrix will be equivalent up to a rotation to $W_i = \sum_{\text{topics}} P(w|t)\sqrt{P(t)} \cdot \hat{t}$.
             </p>
         </div>
 
         <p>
-            Constructing and factorizing our own pairwise joint probability matrix is outside the scope of this project. In its place, I chose to use GloVe vectors, with the assumption that our word vectors take on the form:
+            Constructing and factorizing a custom pairwise joint probability matrix is outside the scope of this project. In its place, I chose to use GloVe vectors, with the assumption that the word vectors take on the form:
         </p>
 
         <div class="math-block">
@@ -656,35 +642,35 @@
         </div>
 
         <p>
-            where $C_t$ is some topic-dependent scaling constant. However, <strong>there is no way to uniquely determine $C_t$ from word vectors alone</strong> without further simplifying assumptions or prior information about $P(w|t)$. We'll return to this limitation later.
+            where $C_t$ is some topic-dependent scaling constant. However, <strong>there is no way to uniquely determine $C_t$ from word vectors alone</strong> without further simplifying assumptions or prior information about $P(w|t)$. This limitation will be revisited later.
         </p>
 
         <div class="derivation">
-            <div class="derivation-title">Justification for our assumption</div>
+            <div class="derivation-title">Justification for this assumption</div>
             <p>
                 It is likely that GloVe factorizes something related to the PMI (pointwise mutual information) matrix. This isn't unfounded—there's evidence that methods like SGNS factorize the PMI matrix, and that representations are roughly isomorphic for large enough datasets. GloVe can adopt the form of a PMI matrix since it factorizes $w_i \cdot w_j = \ln(\text{co-occurrences}_{ij}) + b_i + b_j$.
             </p>
             <p>
-                As for our expression directly, it can be derived as follows: $\text{PMI}_{ij} = \log P(w_i, w_j) - \log(P(w_i)P(w_j))$, and $\log P(w_i, w_j) = \log\left(\sum_t P(w_i|t)P(w_j|t)P(t)\right)$.
+                As for the expression directly, it can be derived as follows: $\text{PMI}_{ij} = \log P(w_i, w_j) - \log(P(w_i)P(w_j))$, and $\log P(w_i, w_j) = \log\left(\sum_t P(w_i|t)P(w_j|t)P(t)\right)$.
             </p>
             <p>
                 Let $P(w_k|t) = P(w_k) + \delta_{kt}$, where $\sum_k \delta_{kt} = 0$ and $\sum_t \delta_{kt}P(t) = 0$ (derived from $\sum_k P(w_k|t) = 1$ and $\sum_t P(w_k|t)P(t) = P(w_k)$ respectively).
             </p>
             <p>
-                Expanding, we get $\log P(w_i, w_j) = \log\left(P(w_i)P(w_j) + \sum_t \delta_{it}\delta_{jt}P(t)\right)$. Given that $\log(1+x) \approx x$ when $x$ is small, we can express:
+                Expanding, this yields $\log P(w_i, w_j) = \log\left(P(w_i)P(w_j) + \sum_t \delta_{it}\delta_{jt}P(t)\right)$. Given that $\log(1+x) \approx x$ when $x$ is small, this can be expressed as:
             </p>
             <div class="math-block">
                 $$\text{PMI} \approx \frac{\sum_t \delta_{it}\delta_{jt}P(t)}{P(w_i)P(w_j)}$$
             </div>
             <p>
-                As for the constant $C$ shift that can arise from $b_k$, its effect on factorization is negligible with $\vec{w}^* = \vec{w} + \sqrt{C} \cdot \hat{b}$. Given our factorization method, it can be ignored.
+                As for the constant $C$ shift that can arise from $b_k$, its effect on factorization is negligible with $\vec{w}^* = \vec{w} + \sqrt{C} \cdot \hat{b}$. Given the factorization method used, it can be ignored.
             </p>
         </div>
 
         <h2>Extracting Topic Vectors</h2>
 
         <p>
-            We propose an algorithm for finding a word's latent topic vectors:
+            The following algorithm is proposed for finding a word's latent topic vectors:
         </p>
 
         <div class="algorithm">
@@ -698,13 +684,13 @@
         </div>
 
         <p>
-            We're essentially solving for a unit vector $\hat{t}$ such that the projection $X\hat{t} = \vec{w}$ minimizes both $\sum_i |w_i|$ (sparsity) and the residual variance. Sparsity is needed because it is not guaranteed that all $k$ vectors we find correspond to the same topic.
+            This essentially solves for a unit vector $\hat{t}$ such that the projection $X\hat{t} = \vec{w}$ minimizes both $\sum_i |w_i|$ (sparsity) and the residual variance. Sparsity is needed because it is not guaranteed that all $k$ vectors found correspond to the same topic.
         </p>
 
         <h3>Validating the Decomposition</h3>
 
         <p>
-            When we project all vocabulary words onto an extracted topic vector, we observe a characteristic asymmetric distribution: a bounded negative tail and a long positive tail. This matches our theoretical expectation (up to a constant factor), since:
+            When all vocabulary words are projected onto an extracted topic vector, a characteristic asymmetric distribution is observed: a bounded negative tail and a long positive tail. This matches the theoretical expectation (up to a constant factor), since:
         </p>
 
         <ul>
@@ -714,7 +700,7 @@
         </ul>
 
         <p>
-            Crucially, random shuffling of vector components produces a symmetric Gaussian distribution centered at zero—confirming that our extracted topic vectors capture genuine semantic structure, not noise.
+            Crucially, random shuffling of vector components produces a symmetric Gaussian distribution centered at zero—confirming that the extracted topic vectors capture genuine semantic structure, not noise.
         </p>
 
         <h2>The Scoring Function</h2>
@@ -736,25 +722,25 @@
         </div>
 
         <p>
-            We prefer to use the max approximation over softmax here because the topic space we construct contains multiple overlapping topic representations, while the topic space assumed in these calculations is the fully spanning orthogonal topic space.
+            The max approximation is preferred over softmax here because the topic space constructed contains multiple overlapping topic representations, while the topic space assumed in these calculations is the fully spanning orthogonal topic space.
         </p>
 
         <h2>Results</h2>
 
         <p>
-            We tested our solver on several Connections puzzles. While the one-shot performance leaves much to be desired, this formulation still holds merit. By examining where the true solution ranks among all 2.6 million possible partitions, there is one key finding: <strong>the true solution consistently falls within the top 1% of all solutions by score</strong>. This suggests our scoring function captures meaningful structure, even when it doesn't identify the exact solution.
+            The solver was tested on several Connections puzzles. While the one-shot performance leaves much to be desired, this formulation still holds merit. By examining where the true solution ranks among all 2.6 million possible partitions, there is one key finding: <strong>the true solution consistently falls within the top 1% of all solutions by score</strong>. This suggests the scoring function captures meaningful structure, even when it doesn't identify the exact solution.
         </p>
 
         <h2>Limitations and Future Directions</h2>
 
         <p>
-            Our approach has several fundamental limitations, most stemming from the unrecoverable constants discussed earlier.
+            This approach has several fundamental limitations, most stemming from the unrecoverable constants discussed earlier.
         </p>
 
         <h3>The $C_t$ and $P(t)$ Problem</h3>
 
         <p>
-            As established in our validation, we cannot recover the scaling constant $C_t$ or the topic prior $P(t)$ from word vectors alone. This forces us to assume uniform $P(t)$ across topics—a simplification that likely hurts performance on puzzles where the NYT has strong topic preferences.
+            As established in the validation, the scaling constant $C_t$ and the topic prior $P(t)$ cannot be recovered from word vectors alone. This forces the assumption of uniform $P(t)$ across topics—a simplification that likely hurts performance on puzzles where the NYT has strong topic preferences.
         </p>
 
         <p>

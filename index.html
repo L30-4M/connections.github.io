@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solving NYT Connections with Word Embeddings: A Probabilistic Approach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #FAFAF9;
+            --bg-secondary: #F5F5F4;
+            --bg-code: #1C1917;
+            --text-primary: #1C1917;
+            --text-secondary: #57534E;
+            --text-muted: #78716C;
+            --accent: #B45309;
+            --accent-light: #FEF3C7;
+            --border: #E7E5E4;
+            --serif: 'Source Serif 4', Georgia, serif;
+            --sans: 'Inter', -apple-system, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 18px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--serif);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Header */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            background: rgba(250, 250, 249, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-family: var(--sans);
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            font-family: var(--sans);
+            font-size: 0.85rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Hero */
+        .hero {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 5rem 2rem 3rem;
+        }
+
+        .meta {
+            font-family: var(--sans);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .meta time {
+            color: var(--accent);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 400;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            font-weight: 300;
+            line-height: 1.6;
+        }
+
+        .authors {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            font-family: var(--sans);
+            font-size: 0.9rem;
+        }
+
+        .author {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-light), #FDE68A);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.85rem;
+        }
+
+        .author-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .author-role {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Article */
+        article {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 3rem 2rem 6rem;
+        }
+
+        article p {
+            margin-bottom: 1.5rem;
+        }
+
+        article h2 {
+            font-size: 1.6rem;
+            font-weight: 500;
+            margin: 3rem 0 1.5rem;
+            letter-spacing: -0.01em;
+        }
+
+        article h3 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin: 2.5rem 0 1rem;
+        }
+
+        /* Figures */
+        figure {
+            margin: 3rem -4rem;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        @media (max-width: 900px) {
+            figure {
+                margin: 2rem 0;
+            }
+        }
+
+        figure img {
+            width: 100%;
+            border-radius: 4px;
+        }
+
+        figcaption {
+            font-family: var(--sans);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        /* Connections Grid Demo */
+        .connections-demo {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 2rem 0;
+        }
+
+        .word-tile {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-family: var(--sans);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+
+        .word-tile:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .word-tile.solved {
+            color: white;
+            border-color: transparent;
+        }
+
+        .word-tile.yellow { background: #F9DF6D; color: #1C1917; }
+        .word-tile.green { background: #A0C35A; color: #1C1917; }
+        .word-tile.blue { background: #B0C4EF; color: #1C1917; }
+        .word-tile.purple { background: #BA81C5; color: #1C1917; }
+
+        /* Math blocks */
+        .math-block {
+            overflow-x: auto;
+            padding: 1.5rem 0;
+            margin: 1.5rem 0;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .math-block .katex {
+            font-size: 1.1rem;
+        }
+
+        /* Inline math */
+        .katex {
+            font-size: 1em;
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--bg-code);
+            color: #E7E5E4;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: var(--mono);
+            font-size: 0.9em;
+            background: var(--bg-secondary);
+            padding: 0.15em 0.4em;
+            border-radius: 3px;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        /* Callouts */
+        .callout {
+            background: var(--accent-light);
+            border-left: 3px solid var(--accent);
+            padding: 1.25rem 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .callout p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .callout p + p {
+            margin-top: 1rem;
+        }
+
+        .callout strong {
+            color: var(--accent);
+        }
+
+        /* Lists */
+        article ul, article ol {
+            margin: 1.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        article li {
+            margin-bottom: 0.75rem;
+        }
+
+        /* Links */
+        article a {
+            color: var(--accent);
+            text-decoration: underline;
+            text-decoration-color: rgba(180, 83, 9, 0.3);
+            text-underline-offset: 2px;
+            transition: text-decoration-color 0.2s;
+        }
+
+        article a:hover {
+            text-decoration-color: var(--accent);
+        }
+
+        /* Horizontal rule */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 3rem 0;
+        }
+
+        /* Algorithm box */
+        .algorithm {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin: 2rem 0;
+        }
+
+        .algorithm-title {
+            font-family: var(--sans);
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .algorithm ol {
+            font-family: var(--sans);
+            font-size: 0.95rem;
+        }
+
+        /* Derivation box */
+        .derivation {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1.5rem 2rem;
+            margin: 2rem 0;
+            font-size: 0.95rem;
+        }
+
+        .derivation-title {
+            font-family: var(--sans);
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+        }
+
+        .derivation p {
+            margin-bottom: 1rem;
+        }
+
+        .derivation .math-block {
+            background: white;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 4rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-inner {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .footer-cta {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .footer-cta h3 {
+            font-family: var(--serif);
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 1rem;
+        }
+
+        .footer-cta p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: inline-block;
+            font-family: var(--sans);
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            background: var(--text-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--accent);
+        }
+
+        .footer-meta {
+            text-align: center;
+            font-family: var(--sans);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            html {
+                font-size: 16px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .connections-demo {
+                gap: 4px;
+            }
+
+            .word-tile {
+                padding: 0.75rem 0.25rem;
+                font-size: 0.7rem;
+            }
+
+            .authors {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero, article {
+            animation: fadeIn 0.6s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <a href="#" class="logo">Research</a>
+            <nav class="nav-links">
+                <a href="#">Papers</a>
+                <a href="#">Blog</a>
+                <a href="#">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hero">
+        <div class="meta">
+            Research · <time>January 2026</time>
+        </div>
+        <h1>Solving NYT Connections with Word Embeddings: A Probabilistic Approach</h1>
+        <p class="subtitle">
+            We explore how pre-trained word embeddings can be reinterpreted through the lens of latent topic modeling to solve semantic grouping puzzles—without any task-specific training data.
+        </p>
+        <div class="authors">
+            <div class="author">
+                <div class="author-avatar">R</div>
+                <div>
+                    <div class="author-name">Research Author</div>
+                    <div class="author-role">Independent Researcher</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <article>
+        <p>
+            The New York Times <em>Connections</em> puzzle presents a deceptively simple challenge: given 16 words arranged in a grid, partition them into four groups of four, where each group shares a common theme. What makes this puzzle interesting from a machine learning perspective is that it requires reasoning about semantic relationships that are often subtle, context-dependent, or based on wordplay rather than literal meaning.
+        </p>
+
+        <div class="connections-demo">
+            <div class="word-tile">insurance</div>
+            <div class="word-tile">market</div>
+            <div class="word-tile">almanac</div>
+            <div class="word-tile">tan</div>
+            <div class="word-tile">number</div>
+            <div class="word-tile">college</div>
+            <div class="word-tile">position</div>
+            <div class="word-tile">team</div>
+            <div class="word-tile">exchange</div>
+            <div class="word-tile">contact</div>
+            <div class="word-tile">interaction</div>
+            <div class="word-tile">dealings</div>
+            <div class="word-tile">arrival</div>
+            <div class="word-tile">flight</div>
+            <div class="word-tile">gate</div>
+            <div class="word-tile">destination</div>
+        </div>
+
+        <p>
+            At first glance, this seems like a problem tailor-made for large language models—and indeed, modern LLMs can solve many Connections puzzles through in-context reasoning. But we were curious: could we build a solver using only pre-trained word embeddings and a principled probabilistic framework? The answer, it turns out, is yes—and the approach reveals something interesting about the latent structure hidden in word vectors.
+        </p>
+
+        <h2>Defining the Problem Probabilistically</h2>
+
+        <p>
+            When presented with two potential groups—say, Group A: <em>arrival, flight, gate, destination</em> versus Group B: <em>arrival, almanac, tan, team</em>—you can intuitively tell that one is more likely to be an actual Connections category. This intuition suggests that we can assign a probability to each potential grouping, and by extension, to each potential solution (a partition of all 16 words into four groups).
+        </p>
+
+        <p>
+            We formalize this as:
+        </p>
+
+        <div class="math-block">
+            $$P(S) = P(G_1, G_2, G_3, G_4)$$
+        </div>
+
+        <p>
+            where $S$ is a solution consisting of four groups. We make two key assumptions: first, that the most likely solution under our model corresponds to the true solution; and second, that we can factor the joint probability using a mean-field approximation:
+        </p>
+
+        <div class="math-block">
+            $$P(S) \approx \prod_{G \in S} P(G)$$
+        </div>
+
+        <p>
+            This factorization assumes that groups are approximately independent—not strictly true, but sufficient for finding good solutions in practice.
+        </p>
+
+        <h2>A Generative Model for Puzzle Creation</h2>
+
+        <p>
+            So how do we express $P(G)$? To figure this out, let's imagine how a puzzle creator might actually construct a Connections puzzle. A reasonable guess:
+        </p>
+
+        <div class="algorithm">
+            <div class="algorithm-title">Hypothesized Generative Process</div>
+            <ol>
+                <li>The puzzle creator chooses a topic</li>
+                <li>They choose four words associated with that topic</li>
+                <li>They repeat this three more times</li>
+            </ol>
+        </div>
+
+        <p>
+            Now, when picking a topic, we can agree that some topics are more likely than others. A category like "sports" is far more probable in a mainstream puzzle than "quantum topology." This suggests topics are drawn from some distribution—call it $P(t|\text{NYT})$. Similarly, if I asked you to say the first word that comes to mind when I say "sports," we'd both agree "ball" is far more likely than "poetry." This tells us there exists a distribution $P(w|t)$ that captures our abstract notion of word-topic relatedness.
+        </p>
+
+        <p>
+            Taking this reasoning, we can express the unnormalized posterior for a group given a topic:
+        </p>
+
+        <div class="math-block">
+            $$P_N(G, t) = P(t) \prod_{w \in G} P(w|t)$$
+        </div>
+
+        <p>
+            However, this doesn't actually capture the fact that <em>only</em> these four words were generated by this topic. You can verify this yourself: $\sum_{|G|=4} P_N(G|t) \neq 1$. To account for this constraint, we introduce a normalization factor $K_t = \left(\sum_{|G|=4} P_N(G|t)\right)^{-1}$, giving us:
+        </p>
+
+        <div class="math-block">
+            $$P(G, t) = K_t \cdot P_N(G, t)$$
+        </div>
+
+        <p>
+            The final group probability marginalizes over all possible topics:
+        </p>
+
+        <div class="math-block">
+            $$P(G) = \sum_{\text{topics}} P(G, t)$$
+        </div>
+
+        <h2>From Theory to Word Vectors</h2>
+
+        <p>
+            Throughout this framework, we've left out one crucial detail: how do we actually find $P(w|t)$ and $P(t)$?
+        </p>
+
+        <p>
+            The simplest solution would be to have puzzle creators directly rank word-topic similarities—clean data, but entirely unfeasible. We could analyze historical NYT Connections puzzles, but this dataset is small and uninformative since solutions aren't repeated. Crowdsourcing similarity judgments is promising but outside the scope of this project. Existing similarity datasets aren't sufficient for our purposes either.
+        </p>
+
+        <p>
+            Our final hope is to use text data, like Wikipedia, to approximate $P(w|t)$ and $P(t)$. In order to do this we make the following simplifying assumptions:
+        </p>
+
+        <ul>
+            <li>That $P(w|t)$ learned from text approximates the "true" word-topic distribution</li>
+            <li>That grammatical structure has minimal effect on $P(w|t)$</li>
+            <li>That each passage has a dominant topic occurring with probability $P(t)$</li>
+        </ul>
+
+        <div class="callout">
+            <p>
+                <strong>Key insight:</strong> The idea behind using text data to approximate $P(w|t)$ isn't entirely far-fetched. For example, if you want a passage to convey <em>sadness</em>, you're more likely to use words like "blue," "rain," and "tears." And any word vectors we find from factorizing the co-occurrence matrix will be equivalent up to a rotation to $W_i = \sum_{\text{topics}} P(w|t)\sqrt{P(t)} \cdot \hat{t}$.
+            </p>
+        </div>
+
+        <p>
+            Constructing and factorizing our own pairwise joint probability matrix is outside the scope of this project. In its place, I chose to use GloVe vectors, with the assumption that our word vectors take on the form:
+        </p>
+
+        <div class="math-block">
+            $$\vec{w} \approx \sum_{\text{topics}} \left(-1 + \frac{P(w|t)}{P(w)}\right) C_t \cdot \hat{t}$$
+        </div>
+
+        <p>
+            where $C_t$ is some topic-dependent scaling constant. However, <strong>there is no way to uniquely determine $C_t$ from word vectors alone</strong> without further simplifying assumptions or prior information about $P(w|t)$. We'll return to this limitation later.
+        </p>
+
+        <div class="derivation">
+            <div class="derivation-title">Justification for our assumption</div>
+            <p>
+                It is likely that GloVe factorizes something related to the PMI (pointwise mutual information) matrix. This isn't unfounded—there's evidence that methods like SGNS factorize the PMI matrix, and that representations are roughly isomorphic for large enough datasets. GloVe can adopt the form of a PMI matrix since it factorizes $w_i \cdot w_j = \ln(\text{co-occurrences}_{ij}) + b_i + b_j$.
+            </p>
+            <p>
+                As for our expression directly, it can be derived as follows: $\text{PMI}_{ij} = \log P(w_i, w_j) - \log(P(w_i)P(w_j))$, and $\log P(w_i, w_j) = \log\left(\sum_t P(w_i|t)P(w_j|t)P(t)\right)$.
+            </p>
+            <p>
+                Let $P(w_k|t) = P(w_k) + \delta_{kt}$, where $\sum_k \delta_{kt} = 0$ and $\sum_t \delta_{kt}P(t) = 0$ (derived from $\sum_k P(w_k|t) = 1$ and $\sum_t P(w_k|t)P(t) = P(w_k)$ respectively).
+            </p>
+            <p>
+                Expanding, we get $\log P(w_i, w_j) = \log\left(P(w_i)P(w_j) + \sum_t \delta_{it}\delta_{jt}P(t)\right)$. Given that $\log(1+x) \approx x$ when $x$ is small, we can express:
+            </p>
+            <div class="math-block">
+                $$\text{PMI} \approx \frac{\sum_t \delta_{it}\delta_{jt}P(t)}{P(w_i)P(w_j)}$$
+            </div>
+            <p>
+                As for the constant $C$ shift that can arise from $b_k$, its effect on factorization is negligible with $\vec{w}^* = \vec{w} + \sqrt{C} \cdot \hat{b}$. Given our factorization method, it can be ignored.
+            </p>
+        </div>
+
+        <h2>Extracting Topic Vectors</h2>
+
+        <p>
+            We propose an algorithm for finding a word's latent topic vectors:
+        </p>
+
+        <div class="algorithm">
+            <div class="algorithm-title">Topic Vector Extraction</div>
+            <ol>
+                <li>For a target word $w$, find the top-$k$ words by cosine similarity in the embedding space</li>
+                <li>Apply sparse decomposition (SVD with L1 regularization) to find a topic direction $\hat{t}$</li>
+                <li>Project out the discovered topic: $w_{k+1} = w_k - \langle w_k, \hat{t}_k \rangle \hat{t}_k$</li>
+                <li>Repeat to extract multiple topic vectors, orthogonalizing against previously found topics</li>
+            </ol>
+        </div>
+
+        <p>
+            We're essentially solving for a unit vector $\hat{t}$ such that the projection $X\hat{t} = \vec{w}$ minimizes both $\sum_i |w_i|$ (sparsity) and the residual variance. Sparsity is needed because it is not guaranteed that all $k$ vectors we find correspond to the same topic.
+        </p>
+
+        <h3>Validating the Decomposition</h3>
+
+        <p>
+            When we project all vocabulary words onto an extracted topic vector, we observe a characteristic asymmetric distribution: a bounded negative tail and a long positive tail. This matches our theoretical expectation (up to a constant factor), since:
+        </p>
+
+        <ul>
+            <li>The minimum value is bounded by approximately $-\sqrt{P(t)}$</li>
+            <li>The maximum value is bounded by approximately $\sqrt{P(t)} / \min(P(w))$</li>
+            <li>The weighted mean $\sum_i P(w_i) \langle \vec{w}_i, \hat{t} \rangle = 0$</li>
+        </ul>
+
+        <p>
+            Crucially, random shuffling of vector components produces a symmetric Gaussian distribution centered at zero—confirming that our extracted topic vectors capture genuine semantic structure, not noise.
+        </p>
+
+        <h2>The Scoring Function</h2>
+
+        <p>
+            Since $\log$ is a monotonic function, a solution that maximizes $\log P(S)$ also maximizes $P(S)$—orderings are preserved. This justifies working in log-space, giving us the following:
+        </p>
+
+        <div class="math-block">
+            $$\log P(S) = \sum_{G \in S} \log P(G)$$
+        </div>
+
+        <div class="math-block">
+            $$\log P(G) = \log \left( \sum_{\text{topics}} \exp(\log P(G,t)) \right) \approx \max_{\text{topics}} \log P(G,t)$$
+        </div>
+
+        <div class="math-block">
+            $$\log P(G,t) \approx \sum_{w \in G} \log P(w|t) - \max_{\text{groups}} \log P_N(G|t) + \log P(t)$$
+        </div>
+
+        <p>
+            We prefer to use the max approximation over softmax here because the topic space we construct contains multiple overlapping topic representations, while the topic space assumed in these calculations is the fully spanning orthogonal topic space.
+        </p>
+
+        <h2>Results</h2>
+
+        <p>
+            We tested our solver on several Connections puzzles. While the one-shot performance leaves much to be desired, this formulation still holds merit. By examining where the true solution ranks among all 2.6 million possible partitions, there is one key finding: <strong>the true solution consistently falls within the top 1% of all solutions by score</strong>. This suggests our scoring function captures meaningful structure, even when it doesn't identify the exact solution.
+        </p>
+
+        <h2>Limitations and Future Directions</h2>
+
+        <p>
+            Our approach has several fundamental limitations, most stemming from the unrecoverable constants discussed earlier.
+        </p>
+
+        <h3>The $C_t$ and $P(t)$ Problem</h3>
+
+        <p>
+            As established in our validation, we cannot recover the scaling constant $C_t$ or the topic prior $P(t)$ from word vectors alone. This forces us to assume uniform $P(t)$ across topics—a simplification that likely hurts performance on puzzles where the NYT has strong topic preferences.
+        </p>
+
+        <p>
+            These issues with not knowing $P(t)$ can in part be alleviated by a <strong>multi-shot approach</strong>. NYT Connections allows for 4 incorrect guesses, and even tells you when your guess is one away from the true solution—feedback that could be incorporated to refine topic priors iteratively.
+        </p>
+
+        <h3>Morphological Patterns</h3>
+
+        <p>
+            Since GloVe does not tokenize its inputs, it ends up missing out on prefix/suffix puzzles like words starting with "RAIN" (rainbow, rainmaker, raincoat) or "COPY" (copyright, copycat, copywriter). This is a fundamental limitation of the word-level embedding approach.
+        </p>
+
+        <h3>Vocabulary Coverage</h3>
+
+        <p>
+            GloVe's vocabulary may lack recent celebrities, brands, or cultural references common in NYT puzzles. This is less fundamental—retraining on more recent corpora would help—but illustrates how the method depends on corpus composition.
+        </p>
+
+        <hr>
+
+        <p>
+            Despite these limitations, the approach demonstrates that pre-trained word embeddings contain surprisingly rich structure for semantic reasoning. The fact that true solutions consistently rank in the top 1% suggests the probabilistic framework captures something real about word relationships—even without task-specific training or access to the ground-truth distributions $P(w|t)$ and $P(t)$ that would make this problem fully tractable.
+        </p>
+
+        <h2>Technical Details</h2>
+
+        <p>
+            For reproducibility, here are the key implementation details:
+        </p>
+
+        <ul>
+            <li><strong>Embeddings:</strong> GloVe 300-dimensional vectors, centered by subtracting probability-weighted mean vector</li>
+            <li><strong>Bias removal:</strong> Project out dominant eigenvector of $M^T M$</li>
+            <li><strong>Topic extraction:</strong> Sparse decomposition with L1 regularization ($\alpha = 0.5$) on top-13 similar words by cosine similarity</li>
+            <li><strong>Topics per word:</strong> 30 orthogonal topic vectors extracted per puzzle word</li>
+            <li><strong>Scoring:</strong> Log-probability with normalization constant $c_1 = 1$, uniform $P(t)$ assumption</li>
+            <li><strong>Optimization:</strong> Dynamic programming over bitmask states to find optimal partition</li>
+        </ul>
+    </article>
+
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-cta">
+                <h3>Explore the Code</h3>
+                <p>The complete implementation, including the topic extraction algorithm and DP solver, is available for experimentation.</p>
+                <a href="#" class="btn">View on GitHub</a>
+            </div>
+            <div class="footer-meta">
+                <p>© 2026 · Research Blog</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>
